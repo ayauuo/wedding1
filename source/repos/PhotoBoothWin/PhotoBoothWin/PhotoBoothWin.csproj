@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- 預設 x64 以載入 EDSDK 64-bit DLL；EDSDK 不支援 AnyCPU -->
+    <Platforms>x64;AnyCPU</Platforms>
+    <PlatformTarget Condition="'$(Platform)'=='x64'">x64</PlatformTarget>
+    
+    <!-- 自包含部署配置：不需要目標電腦安裝 .NET Runtime -->
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    
+    <!-- 發布配置 -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishTrimmed>false</PublishTrimmed>
+    
+    <!-- 重要：確保資源文件在單一文件打包時也能正確訪問 -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- s3_config.txt 放在專案目錄（與 .csproj 同層）時，建置／發佈時複製到輸出目錄。該檔已加入 .gitignore。 -->
+    <Content Include="s3_config.txt" Condition="Exists('s3_config.txt')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <Link>s3_config.txt</Link>
+    </Content>
+    <!-- Vue (web-vue/app) build 輸出到 web/，以下包含整個 web 目錄 -->
+    <Content Include="web\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>web\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 原生 DLL 不包進單一 exe，改放在 exe 旁，否則 DllImport 無法載入 -->
+    <None Include="..\..\..\..\EDSDK_64\Dll\EDSDK.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <Link>EDSDK.dll</Link>
+    </None>
+    <None Include="..\..\..\..\EDSDK_64\Dll\EdsImage.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <Link>EdsImage.dll</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.19.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3650.58" />
+    <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+    <PackageReference Include="System.Management" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Hot\6X8\" />
+    <Folder Include="web\assets\templates\LoadingPage\" />
+    <Folder Include="web\assets\templates\PreviewPage\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="web\.DS_Store" />
+    <None Include="web\node_modules\.bin\sass" />
+    <None Include="web\node_modules\.bin\sass.cmd" />
+    <None Include="web\node_modules\.bin\sass.ps1" />
+  </ItemGroup>
+
+</Project>

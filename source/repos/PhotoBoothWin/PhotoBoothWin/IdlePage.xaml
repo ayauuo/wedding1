@@ -1,0 +1,15 @@
+﻿<Page x:Class="PhotoBoothWin.Pages.IdlePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="Black">
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="600">
+            <TextBlock Text="請投幣開始" Foreground="White" FontSize="48"
+                       HorizontalAlignment="Center" Margin="0,0,0,30"/>
+            <Button Content="（測試）模擬投幣 +1"
+                    Height="90" FontSize="28"
+                    Click="OnCoinClick"/>
+        </StackPanel>
+    </Grid>
+</Page>
+

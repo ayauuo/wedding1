@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>測試濾鏡</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #fff; font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+      .screen--test-filter {
+        position: relative;
+        min-height: 100vh;
+        padding: 24px 32px;
+      }
+      .test-filter__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .test-filter__header h1 {
+        margin: 0;
+        font-size: 40px;
+      }
+      .test-filter__actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .btn {
+        padding: 10px 18px;
+        font-size: 16px;
+        border: 1px solid #333;
+        background: #222;
+        color: #fff;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .btn.primary { background: #ff4d4f; border-color: #ff4d4f; }
+      .test-filter__content {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 24px;
+        margin-top: 24px;
+        height: calc(100% - 80px);
+      }
+      .test-filter__preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+        border-radius: 12px;
+        padding: 16px;
+        min-height: 60vh;
+        position: relative;
+      }
+      .test-filter__placeholder {
+        position: absolute;
+        color: #777;
+        font-size: 18px;
+      }
+      .test-filter__image {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 12px;
+        display: none;
+      }
+      .test-filter__controls {
+        overflow-y: auto;
+        padding-right: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .control,
+      .control-group {
+        background: #1c1c1c;
+        border-radius: 10px;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .control label,
+      .control-group label {
+        font-size: 14px;
+        color: #ccc;
+      }
+      .control-inline {
+        display: grid;
+        grid-template-columns: 40px 1fr 70px;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #bbb;
+      }
+      .control-inline input[type='color'] {
+        width: 42px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        padding: 0;
+      }
+      .filter-output {
+        width: 100%;
+        min-height: 120px;
+        background: #0e0e0e;
+        color: #9ef8b5;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 12px;
+        line-height: 1.4;
+        resize: vertical;
+      }
+      .upload-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .upload-row input[type="file"] {
+        color: #ccc;
+      }
+      @media (max-width: 1200px) {
+        .test-filter__content {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="screen--test-filter" role="region" aria-label="測試濾鏡頁">
+      <div class="test-filter__header">
+        <h1>測試濾鏡</h1>
+        <div class="test-filter__actions">
+          <button type="button" class="btn" id="resetBtn">重置參數</button>
+        </div>
+      </div>
+
+      <div class="test-filter__content">
+        <div class="test-filter__preview">
+          <div class="test-filter__placeholder" id="placeholderText">請上傳圖片</div>
+          <img class="test-filter__image" id="previewImg" alt="濾鏡測試圖" />
+        </div>
+        <div class="test-filter__controls">
+          <div class="control">
+            <label>上傳圖片</label>
+            <div class="upload-row">
+              <input id="imgInput" type="file" accept="image/*" />
+              <button type="button" class="btn" id="clearImgBtn">清除圖片</button>
+            </div>
+          </div>
+          <div class="control">
+            <label>亮度 brightness：<span id="valBrightness">1.00</span></label>
+            <input id="brightness" type="range" min="0" max="2" step="0.01" value="1" />
+          </div>
+          <div class="control">
+            <label>對比 contrast：<span id="valContrast">1.00</span></label>
+            <input id="contrast" type="range" min="0" max="3" step="0.01" value="1" />
+          </div>
+          <div class="control">
+            <label>飽和 saturate：<span id="valSaturate">1.00</span></label>
+            <input id="saturate" type="range" min="0" max="3" step="0.01" value="1" />
+          </div>
+          <div class="control">
+            <label>色相 hue-rotate：<span id="valHue">0</span>deg</label>
+            <input id="hueRotate" type="range" min="0" max="360" step="1" value="0" />
+          </div>
+          <div class="control">
+            <label>灰階 grayscale：<span id="valGrayscale">0.00</span></label>
+            <input id="grayscale" type="range" min="0" max="1" step="0.01" value="0" />
+          </div>
+          <div class="control">
+            <label>復古 sepia：<span id="valSepia">0.00</span></label>
+            <input id="sepia" type="range" min="0" max="1" step="0.01" value="0" />
+          </div>
+          <div class="control">
+            <label>反相 invert：<span id="valInvert">0.00</span></label>
+            <input id="invert" type="range" min="0" max="1" step="0.01" value="0" />
+          </div>
+          <div class="control">
+            <label>透明 opacity：<span id="valOpacity">1.00</span></label>
+            <input id="opacity" type="range" min="0" max="1" step="0.01" value="1" />
+          </div>
+          <div class="control">
+            <label>模糊 blur：<span id="valBlur">0.0</span>px</label>
+            <input id="blur" type="range" min="0" max="10" step="0.1" value="0" />
+          </div>
+          <div class="control-group">
+            <label>陰影 drop-shadow</label>
+            <div class="control-inline">
+              <span>X</span>
+              <input id="shadowX" type="range" min="-20" max="20" step="1" value="0" />
+              <span><span id="valShadowX">0</span>px</span>
+            </div>
+            <div class="control-inline">
+              <span>Y</span>
+              <input id="shadowY" type="range" min="-20" max="20" step="1" value="0" />
+              <span><span id="valShadowY">0</span>px</span>
+            </div>
+            <div class="control-inline">
+              <span>模糊</span>
+              <input id="shadowBlur" type="range" min="0" max="30" step="1" value="0" />
+              <span><span id="valShadowBlur">0</span>px</span>
+            </div>
+            <div class="control-inline">
+              <span>顏色</span>
+              <input id="shadowColor" type="color" value="#000000" />
+              <span>透明度 <span id="valShadowAlpha">0.00</span></span>
+              <input id="shadowAlpha" type="range" min="0" max="1" step="0.01" value="0" />
+            </div>
+          </div>
+          <div class="control">
+            <label>目前 filter 字串</label>
+            <textarea id="filterOutput" class="filter-output" readonly></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const imgInput = $('imgInput');
+      const previewImg = $('previewImg');
+      const placeholderText = $('placeholderText');
+      const filterOutput = $('filterOutput');
+      const resetBtn = $('resetBtn');
+      const clearImgBtn = $('clearImgBtn');
+
+      const sliders = {
+        brightness: $('brightness'),
+        contrast: $('contrast'),
+        saturate: $('saturate'),
+        hueRotate: $('hueRotate'),
+        grayscale: $('grayscale'),
+        sepia: $('sepia'),
+        invert: $('invert'),
+        opacity: $('opacity'),
+        blur: $('blur'),
+        shadowX: $('shadowX'),
+        shadowY: $('shadowY'),
+        shadowBlur: $('shadowBlur'),
+        shadowAlpha: $('shadowAlpha'),
+      };
+
+      const values = {
+        brightness: $('valBrightness'),
+        contrast: $('valContrast'),
+        saturate: $('valSaturate'),
+        hueRotate: $('valHue'),
+        grayscale: $('valGrayscale'),
+        sepia: $('valSepia'),
+        invert: $('valInvert'),
+        opacity: $('valOpacity'),
+        blur: $('valBlur'),
+        shadowX: $('valShadowX'),
+        shadowY: $('valShadowY'),
+        shadowBlur: $('valShadowBlur'),
+        shadowAlpha: $('valShadowAlpha'),
+      };
+
+      const shadowColor = $('shadowColor');
+
+      function toFixed(val, digits) {
+        return Number(val).toFixed(digits);
+      }
+
+      function updateFilter() {
+        values.brightness.textContent = toFixed(sliders.brightness.value, 2);
+        values.contrast.textContent = toFixed(sliders.contrast.value, 2);
+        values.saturate.textContent = toFixed(sliders.saturate.value, 2);
+        values.hueRotate.textContent = sliders.hueRotate.value;
+        values.grayscale.textContent = toFixed(sliders.grayscale.value, 2);
+        values.sepia.textContent = toFixed(sliders.sepia.value, 2);
+        values.invert.textContent = toFixed(sliders.invert.value, 2);
+        values.opacity.textContent = toFixed(sliders.opacity.value, 2);
+        values.blur.textContent = toFixed(sliders.blur.value, 1);
+        values.shadowX.textContent = sliders.shadowX.value;
+        values.shadowY.textContent = sliders.shadowY.value;
+        values.shadowBlur.textContent = sliders.shadowBlur.value;
+        values.shadowAlpha.textContent = toFixed(sliders.shadowAlpha.value, 2);
+
+        const color = shadowColor.value || '#000000';
+        const r = parseInt(color.slice(1, 3), 16) || 0;
+        const g = parseInt(color.slice(3, 5), 16) || 0;
+        const b = parseInt(color.slice(5, 7), 16) || 0;
+        const a = Math.min(1, Math.max(0, Number(sliders.shadowAlpha.value)));
+        const rgba = `rgba(${r}, ${g}, ${b}, ${a})`;
+
+        const filterStr = [
+          `brightness(${sliders.brightness.value})`,
+          `contrast(${sliders.contrast.value})`,
+          `saturate(${sliders.saturate.value})`,
+          `hue-rotate(${sliders.hueRotate.value}deg)`,
+          `grayscale(${sliders.grayscale.value})`,
+          `sepia(${sliders.sepia.value})`,
+          `invert(${sliders.invert.value})`,
+          `opacity(${sliders.opacity.value})`,
+          `blur(${sliders.blur.value}px)`,
+          `drop-shadow(${sliders.shadowX.value}px ${sliders.shadowY.value}px ${sliders.shadowBlur.value}px ${rgba})`,
+        ].join(' ');
+
+        previewImg.style.filter = filterStr;
+        filterOutput.value = filterStr;
+      }
+
+      function resetAll() {
+        sliders.brightness.value = 1;
+        sliders.contrast.value = 1;
+        sliders.saturate.value = 1;
+        sliders.hueRotate.value = 0;
+        sliders.grayscale.value = 0;
+        sliders.sepia.value = 0;
+        sliders.invert.value = 0;
+        sliders.opacity.value = 1;
+        sliders.blur.value = 0;
+        sliders.shadowX.value = 0;
+        sliders.shadowY.value = 0;
+        sliders.shadowBlur.value = 0;
+        sliders.shadowAlpha.value = 0;
+        shadowColor.value = '#000000';
+        updateFilter();
+      }
+
+      imgInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        previewImg.src = url;
+        previewImg.style.display = 'block';
+        placeholderText.style.display = 'none';
+      });
+
+      clearImgBtn.addEventListener('click', () => {
+        previewImg.removeAttribute('src');
+        previewImg.style.display = 'none';
+        placeholderText.style.display = 'block';
+        imgInput.value = '';
+      });
+
+      resetBtn.addEventListener('click', resetAll);
+      Object.values(sliders).forEach((el) => el.addEventListener('input', updateFilter));
+      shadowColor.addEventListener('input', updateFilter);
+
+      resetAll();
+    </script>
+  </body>
+</html>

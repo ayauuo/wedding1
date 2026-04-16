@@ -1,0 +1,7 @@
+# 複製此檔為 s3_config.txt 並填入你的 AWS 金鑰
+# 注意：s3_config.txt 已加入 .gitignore，不會被提交到版控
+# 部署時請將 s3_config.txt 放在 PhotoBoothWin.exe 同目錄
+AccessKey=你的AccessKey
+SecretKey=你的SecretKey
+Bucket=你的bucket名稱
+Region=ap-northeast-1

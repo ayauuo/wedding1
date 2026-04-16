@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>下載相片／影片</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="header">
+      <h1 class="title">您的拍貼成果</h1>
+    </header>
+    <div class="tabs">
+      <button type="button" class="tab is-active" data-tab="photo" aria-pressed="true">相片</button>
+      <button type="button" class="tab" data-tab="video" aria-pressed="false">影片</button>
+    </div>
+    <main class="content">
+      <section class="panel panel--photo is-visible" id="panel-photo" aria-hidden="false">
+        <div class="media-wrap">
+          <img id="photo-img" src="" alt="合成相片" class="media media--img" />
+        </div>
+        <a id="photo-dl" href="" download="" class="btn-dl">下載相片</a>
+      </section>
+      <section class="panel panel--video" id="panel-video" aria-hidden="true">
+        <div class="media-wrap">
+          <video id="photo-video" src="" controls playsinline class="media media--video"></video>
+        </div>
+        <a id="video-dl" href="" download="" class="btn-dl">下載影片</a>
+      </section>
+    </main>
+    <p class="hint" id="hint">請使用拍貼機 QR code 掃描後取得的網址進入此頁。</p>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+/*
+ * PhotoBooth 樣式入口（SCSS）
+ */
+
+@use 'base';
+@use 'loading';
+
+/* 各頁面樣式由各元件 <style lang="scss" scoped> 引入 */

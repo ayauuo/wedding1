@@ -1,0 +1,231 @@
+<Page x:Class="PhotoBoothWin.Pages.ShootPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="#F6F0F6">
+
+    <Page.Resources>
+        <!-- 左側濾鏡按鈕樣式（黑底白字） -->
+        <Style x:Key="FilterToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="160"/>
+            <Setter Property="Height" Value="70"/>
+            <Setter Property="Margin" Value="0,18,0,0"/>
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="Black"/>
+            <Setter Property="BorderThickness" Value="4"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- 被選中：橘色框 -->
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FFA500"/>
+                            </Trigger>
+                            <!-- 未選中：無框 -->
+                            <Trigger Property="IsChecked" Value="False">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="Transparent"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+
+        <!-- 中間縮圖框樣式 -->
+        <Style x:Key="ThumbFrameStyle" TargetType="Border">
+            <Setter Property="Width" Value="210"/>
+            <Setter Property="Height" Value="140"/>
+            <Setter Property="Margin" Value="0,18,0,0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- 大畫面框 -->
+        <Style x:Key="BigFrameStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderBrush" Value="#DDD"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+
+        <!-- 底部大按鈕 -->
+        <Style x:Key="BottomBtnStyle" TargetType="Button">
+            <Setter Property="Height" Value="90"/>
+            <Setter Property="Width" Value="260"/>
+            <Setter Property="FontSize" Value="34"/>
+            <Setter Property="Margin" Value="20,0,0,0"/>
+        </Style>
+
+        <!-- 用於 Visibility 綁定 -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Page.Resources>
+
+    <Grid Margin="18">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="190"/>
+            <!-- 左濾鏡 -->
+            <ColumnDefinition Width="25"/>
+            <!-- 中縮圖 -->
+            <ColumnDefinition Width="*"/>
+            <!-- 右主畫面 -->
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- 標題 -->
+            <RowDefinition Height="*"/>
+            <!-- 主內容 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 底部按鈕 -->
+        </Grid.RowDefinitions>
+
+        <!-- 上方提示文字：對齊下方預覽框的正中間 -->
+        <Grid Grid.Column="2" Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="1"
+                       Text="請看上方鏡頭"
+                       FontSize="56" FontWeight="Bold"
+                       Foreground="#444"
+                       HorizontalAlignment="Center"/>
+        </Grid>
+
+        <!-- 左：濾鏡區（拍攝/預覽階段先隱藏，下一步才顯示） -->
+        <StackPanel Grid.Column="0" Grid.Row="1"
+            Visibility="{Binding IsFilterPanelVisible, Converter={StaticResource BoolToVis}}">
+
+            <ToggleButton x:Name="T_Slim" Style="{StaticResource FilterToggleStyle}" Content="瘦臉"
+                  Tag="slim" Click="OnFilterToggleClick" IsEnabled="{Binding IsUiEnabled}"/>
+            <ToggleButton x:Name="T_Eye" Style="{StaticResource FilterToggleStyle}" Content="大眼"
+                  Tag="eye" Click="OnFilterToggleClick" IsEnabled="{Binding IsUiEnabled}"/>
+            <ToggleButton x:Name="T_Bright" Style="{StaticResource FilterToggleStyle}" Content="清透亮白"
+                  Tag="bright" Click="OnFilterToggleClick" IsEnabled="{Binding IsUiEnabled}"/>
+            <ToggleButton x:Name="T_Retro" Style="{StaticResource FilterToggleStyle}" Content="理光復片"
+                  Tag="retro" Click="OnFilterToggleClick" IsEnabled="{Binding IsUiEnabled}"/>
+        </StackPanel>
+
+        <!-- 中：四張縮圖（拍完後可點選；拍攝中鎖定不可點） -->
+        <StackPanel Grid.Column="1" Grid.Row="1" HorizontalAlignment="Center">
+            <!-- 第1張 -->
+            <Grid Margin="0,18,0,0">
+                <Border Style="{StaticResource ThumbFrameStyle}">
+                    <Grid>
+                        <Image Source="{Binding ThumbFrameSources[0]}" Stretch="Fill"/>
+                        <Image Source="{Binding ShotImageSources[0]}" Stretch="UniformToFill" />
+                    </Grid>
+                </Border>
+                <!-- 選中紅框 -->
+                <Border BorderBrush="Red" BorderThickness="4" CornerRadius="6"
+                        Visibility="{Binding IsThumbSelected[0], Converter={StaticResource BoolToVis}}"/>
+                <!-- 點擊區 -->
+				<Button Background="Transparent"
+                        BorderThickness="0"
+                        IsEnabled="{Binding CanClickThumbs}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Click="PickThumb0"/>
+
+
+			</Grid>
+
+            <!-- 第2張 -->
+            <Grid Margin="0,18,0,0">
+                <Border Style="{StaticResource ThumbFrameStyle}">
+                    <Grid>
+                        <Image Source="{Binding ThumbFrameSources[1]}" Stretch="Fill"/>
+                        <Image Source="{Binding ShotImageSources[1]}" Stretch="UniformToFill"/>
+                    </Grid>
+                </Border>
+                <Border BorderBrush="Red" BorderThickness="4" CornerRadius="6"
+                        Visibility="{Binding IsThumbSelected[1], Converter={StaticResource BoolToVis}}"/>
+				<Button Background="Transparent"
+                        BorderThickness="0"
+                        IsEnabled="{Binding CanClickThumbs}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Click="PickThumb0"/>
+
+            </Grid>
+
+            <!-- 第3張 -->
+            <Grid Margin="0,18,0,0">
+                <Border Style="{StaticResource ThumbFrameStyle}">
+                    <Grid>
+                        <Image Source="{Binding ThumbFrameSources[2]}" Stretch="Fill"/>
+                        <Image Source="{Binding ShotImageSources[2]}" Stretch="UniformToFill"/>
+                    </Grid>
+                </Border>
+                <Border BorderBrush="Red" BorderThickness="4" CornerRadius="6"
+                        Visibility="{Binding IsThumbSelected[2], Converter={StaticResource BoolToVis}}"/>
+				<Button Background="Transparent"
+                        BorderThickness="0"
+                        IsEnabled="{Binding CanClickThumbs}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Click="PickThumb0"/>
+            </Grid>
+
+            <!-- 第4張 -->
+            <Grid Margin="0,18,0,0">
+                <Border Style="{StaticResource ThumbFrameStyle}">
+                    <Grid>
+                        <Image Source="{Binding ThumbFrameSources[3]}" Stretch="Fill"/>
+                        <Image Source="{Binding ShotImageSources[3]}" Stretch="UniformToFill"/>
+                    </Grid>
+                </Border>
+                <Border BorderBrush="Red" BorderThickness="4" CornerRadius="6"
+                        Visibility="{Binding IsThumbSelected[3], Converter={StaticResource BoolToVis}}"/>
+				<Button Background="Transparent"
+                        BorderThickness="0"
+                        IsEnabled="{Binding CanClickThumbs}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Click="PickThumb0"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- 右：最大紅框 + 鏡頭畫面/選中照片 + 倒數字 -->
+        <Border Grid.Column="2" Grid.Row="1" Style="{StaticResource BigFrameStyle}" Margin="10,0,0,0">
+            <Grid>
+                <!-- 大框圖（會隨拍攝次數/選中照片而換框） -->
+                <Image Source="{Binding BigFrameSource}" Stretch="Fill"/>
+
+                <!-- 內容：拍攝中顯示鏡頭畫面，拍完/選取後顯示照片 -->
+                <!-- 先用 Image 佔位：你接真相機時，把 LivePreviewSource 更新成即時畫面即可 -->
+                <Image Source="{Binding BigContentSource}" Stretch="UniformToFill" Margin="80"/>
+
+                <!-- 倒數字在中心 -->
+                <Border Width="120" Height="180" Background="#33000000"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="{Binding IsCountdownVisible, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding CountdownText}"
+                               Foreground="White" FontSize="90" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 底部按鈕：重拍 / 下一步（拍攝階段先隱藏；拍完四張後出現） -->
+        <StackPanel Grid.Column="2" Grid.Row="2" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,10,0,0">
+
+            <Button Content="重拍" Style="{StaticResource BottomBtnStyle}"
+                    Visibility="{Binding IsRetakeVisible, Converter={StaticResource BoolToVis}}"
+                    Click="OnRetake" IsEnabled="{Binding IsUiEnabled}"/>
+
+            <Button Content="下一步" Style="{StaticResource BottomBtnStyle}"
+                    Visibility="{Binding IsNextVisible, Converter={StaticResource BoolToVis}}"
+                    Click="OnNext" IsEnabled="{Binding IsUiEnabled}"/>
+        </StackPanel>
+    </Grid>
+</Page>

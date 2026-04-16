@@ -1,0 +1,23 @@
+列印紀錄 CSV 會出現在哪裡？
+================================
+
+※ 只有「執行 WPF 主程式」並在結果頁觸發列印（按列印鈕或 60 秒自動列印）後，才會產生 print_log.csv。
+
+1) 從 Visual Studio 按 F5 執行（偵錯）時：
+   本專案有指定 win-x64，執行檔在 win-x64 子資料夾，CSV 在：
+
+   PhotoBoothWin\bin\Debug\net10.0-windows\win-x64\report\print_log.csv
+
+   完整路徑約為：
+   C:\Users\你的帳號\Documents\GitHub\photobooth-kiosk\source\repos\PhotoBoothWin\PhotoBoothWin\bin\Debug\net10.0-windows\win-x64\report\print_log.csv
+
+2) 從 Visual Studio 用 Release 組態執行時：
+   PhotoBoothWin\bin\Release\net10.0-windows\win-x64\report\print_log.csv
+
+3) 執行已發布的 exe 時：
+   在 exe 所在資料夾底下會出現 report 資料夾，CSV 在：
+   report\print_log.csv
+
+如何快速打開該資料夾？
+- 雙擊執行「開啟列印紀錄資料夾.bat」會幫你打開 report 資料夾（會開 bin\Debug\net10.0-windows\win-x64\report 或 Release 的對應路徑）。
+- 或在 Visual Studio 執行一次 WPF、觸發列印後，到「檢視 → 輸出」看 [列印紀錄] 已寫入: （後面就是完整路徑），複製貼到檔案總管即可。

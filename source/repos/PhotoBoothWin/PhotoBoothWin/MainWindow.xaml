@@ -1,0 +1,24 @@
+<Window x:Class="PhotoBoothWin.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="PhotoBoothWin"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        WindowState="Maximized"
+        Topmost="True">
+    <Grid ContextMenuOpening="Grid_ContextMenuOpening">
+        <!-- Vue 網頁（預設顯示） -->
+        <Viewbox x:Name="WebViewPanel" Stretch="Fill" Visibility="Visible">
+            <Border Width="1920" Height="1080">
+                <wv2:WebView2 x:Name="Web"/>
+            </Border>
+        </Viewbox>
+        <!-- WPF 拍照流程：10 秒倒數 + EDSDK 拍照（Vue 呼叫 open_wpf_shoot 時顯示） -->
+        <Viewbox x:Name="WpfShootPanel" Stretch="Fill" Visibility="Collapsed">
+            <Border Width="1920" Height="1080">
+                <Frame x:Name="WpfFrame" NavigationUIVisibility="Hidden"/>
+            </Border>
+        </Viewbox>
+    </Grid>
+</Window>
