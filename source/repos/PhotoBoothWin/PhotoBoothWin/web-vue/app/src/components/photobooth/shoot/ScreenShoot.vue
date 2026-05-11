@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, reactive, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePhotobooth } from '@/composables/usePhotobooth'
 import { useTakePicture, isCountdownMinus5Mode } from '@/composables/useTakePicture'
 import { useLiveView } from '@/composables/useLiveView'
@@ -14,6 +14,7 @@ const {
   setCaptureResults,
   setCaptureVideoBlob,
   captureResults,
+  captureResultsTemplateId,
   selectedFilter,
   getFilterCssForCanvas,
   getColorBalanceForFilter,
@@ -30,13 +31,14 @@ const {
 } = usePhotobooth()
 
 /** 目前編輯的格索引（0-based），貼圖只作用在這一格 */
-const currentSlotIndex = computed(() => tp.currentMainIndex.value - 1)
+const currentSlotIndex = computed(() => tp.currentMainIndex - 1)
 /** 目前這一格的貼圖列表 */
 const stickersForCurrentSlot = computed(
   () => stickersBySlot.value[currentSlotIndex.value] ?? []
 )
 const { hostLiveViewDataUrl, liveViewFrameCount, clearHostLiveViewDataUrl } = useLiveView()
-const tp = useTakePicture(() => selectedTemplate.value ?? null)
+/** reactive：巢狀 ref 在 template 才能正確追蹤；若 tp 為純物件，shootingDone 變 true 時按鈕列可能永不重繪 */
+const tp = reactive(useTakePicture(() => selectedTemplate.value ?? null))
 
 /** 是否顯示濾鏡區（拍完照按「下一步」後顯示，同一頁內完成預覽→濾鏡→確認） */
 const showFilterOptions = ref(false)
@@ -102,7 +104,7 @@ const isReshooting = ref(false)
  * 檔案放在 public/assets/templates/ShootPage/texN.png
  */
 const shootTexUrl = computed(() => {
-  if (!tp.isBurstShooting.value) return ''
+  if (!tp.isBurstShooting) return ''
   const i = currentShootingIndex.value
   if (i < 0) return ''
   const n = i + 1
@@ -112,7 +114,7 @@ const shootTexUrl = computed(() => {
 /** 非 WebView 時顯示提示：僅在拍貼機程式內使用 EDSDK 相機 */
 const cameraError = ref<string | null>(null)
 
-const shotCount = computed(() => tp.shotCount.value)
+const shotCount = computed(() => tp.shotCount)
 /** 強制拍攝不等待對焦（到時機就拍，不管有無對焦成功） */
 function getForceWithoutAf(): boolean {
   const v = import.meta.env.VITE_FORCE_CAPTURE_WITHOUT_AF
@@ -215,8 +217,8 @@ const shootRootStyle = computed(() => {
  * 拍照區尺寸。濾鏡／貼圖模式時改為「與合成 slot 同比例」，讓編輯時所見位置與合成後一致。
  */
 const pictureAreaStyle = computed(() => {
-  const baseW = tp.pictureAreaWidth.value
-  const baseH = tp.pictureAreaHeight.value
+  const baseW = tp.pictureAreaWidth
+  const baseH = tp.pictureAreaHeight
   if (!showFilterOptions.value) {
     return { width: `${baseW}px`, height: `${baseH}px` }
   }
@@ -235,8 +237,8 @@ const pictureAreaStyle = computed(() => {
 /** 左側縮圖容器：與右側大圖同比例（讀取框圖大小），避免左邊裁切跑掉 */
 const THUMB_HEIGHT = 203
 const thumbWrapStyle = computed(() => {
-  const w = tp.pictureAreaWidth.value
-  const h = tp.pictureAreaHeight.value
+  const w = tp.pictureAreaWidth
+  const h = tp.pictureAreaHeight
   if (!h || h <= 0) return { width: '277px', height: `${THUMB_HEIGHT}px` }
   const widthPx = Math.round(THUMB_HEIGHT * (w / h))
   return { width: `${widthPx}px`, height: `${THUMB_HEIGHT}px` }
@@ -244,9 +246,9 @@ const thumbWrapStyle = computed(() => {
 
 /** 框圖 .cover：拍完後用選中格的框，拍攝中用目前格的框；與大圖同用 100% 填滿容器，不溢出 */
 const coverStyle = computed(() => {
-  const url = tp.shootingDone.value
-    ? tp.getCurrentFrameUrl(tp.currentMainIndex.value - 1)
-    : tp.coverFrameUrl.value
+  const url = tp.shootingDone
+    ? tp.getCurrentFrameUrl(tp.currentMainIndex - 1)
+    : tp.coverFrameUrl
   return {
     backgroundImage: url ? `url('${url}')` : 'none',
     backgroundSize: 'contain',
@@ -257,14 +259,14 @@ const coverStyle = computed(() => {
 
 /** 倒數顯示：不顯示 11 與 0，只顯示 10～1 */
 const countdownDisplay = computed(() => {
-  const n = tp.countdownNum.value
+  const n = tp.countdownNum
   return n >= 1 && n <= 10 ? String(n) : ''
 })
 
 /** 右側主預覽圖（目前選中的縮圖）；拍完後與外匡兩層顯示 */
 const mainPreviewUrl = computed(() => {
-  if (!tp.shootingDone.value || !thumbUrls.value.length) return ''
-  const i = tp.currentMainIndex.value - 1
+  if (!tp.shootingDone || !thumbUrls.value.length) return ''
+  const i = tp.currentMainIndex - 1
   return thumbUrls.value[i] ?? thumbUrls.value[0] ?? ''
 })
 
@@ -671,7 +673,7 @@ function debugLog(location: string, message: string, data?: Record<string, unkno
 
 /** 使用 EDSDK 連拍：預覽與拍照皆由 C# 推送／take_one_shot_edsdk，無 webcam。僅拍 shotCount 張（通常 4 張）。 */
 async function startBurstShootEdsdk() {
-  if (tp.isBurstShooting.value) {
+  if (tp.isBurstShooting) {
     shootLog('startBurstShootEdsdk 忽略：已在連拍中')
     return
   }
@@ -682,13 +684,19 @@ async function startBurstShootEdsdk() {
   const count = shotCount.value
   const opts = getCountdownOptions()
   shootLog(`startBurstShootEdsdk 開始 count=${count} opts=${JSON.stringify(opts)} forceWithoutAf=${getForceWithoutAf()}`)
-  tp.isBurstShooting.value = true
+  tp.isBurstShooting = true
+  /** 新的一輪連拍開始時清空「拍完」旗標；避免舊狀態與新倒數並存（重試／重進頁亦然） */
+  tp.shootingDone = false
   if (hasWebView()) callHost('clear_captures', {}).catch(() => {})
   // 依格號保留空位，放棄的格留空字串，方便補拍回填
   const results: string[] = Array.from({ length: count }, () => '')
   thumbUrls.value = Array.from({ length: count }, () => '')
 
   for (let i = 0; i < count; i++) {
+    if (!props.isActive) {
+      shootLog(`連拍在第 ${i + 1}/${count} 張前中止：拍照頁未啟用`)
+      break
+    }
     currentShootingIndex.value = i
     shootLog(`連拍 第 ${i + 1}/${count} 張：setCoverFrameOnly → runCountdown`)
     // #region agent log
@@ -780,11 +788,16 @@ async function startBurstShootEdsdk() {
   currentShootingIndex.value = -1
   const filledCount = results.filter((u) => !!u).length
   shootLog(`startBurstShootEdsdk 完成 results=${filledCount}/${count} 張（依格號保留空位）`)
-  tp.isBurstShooting.value = false
+  tp.isBurstShooting = false
+  /** 若在連拍過程／JS 競態間已離開拍照頁，不可標記拍完，避免與 deactivate 重置打架 */
+  if (!props.isActive) {
+    shootLog('startBurstShootEdsdk：拍照頁已非啟用，略過標記拍完與設定結果')
+    return
+  }
   if (cameraError.value) return
-  tp.shootingDone.value = true
-  tp.reshootUsedSlots.value = new Set()
-  tp.currentMainIndex.value = 1
+  tp.shootingDone = true
+  tp.reshootUsedSlots = new Set()
+  tp.currentMainIndex = 1
   thumbUrls.value = [...results]
   setCaptureResults([...results])
   // #region agent log
@@ -825,13 +838,13 @@ async function onNext() {
     body: JSON.stringify({
       location: 'ScreenShoot.vue:onNext',
       message: 'onNext_entry',
-      data: { shootingDone: tp.shootingDone.value, showFilterOptionsBefore: showFilterOptions.value },
+      data: { shootingDone: tp.shootingDone, showFilterOptionsBefore: showFilterOptions.value },
       timestamp: Date.now(),
       hypothesisId: 'H2',
     }),
   }).catch(() => {})
   // #endregion
-  if (tp.shootingDone.value) {
+  if (tp.shootingDone) {
     // 進入濾鏡模式前先停止 Live View，避免 60fps 更新 hostLiveViewDataUrl 導致主線程被佔滿、drawFilterPreview 的 rAF 永遠跑不到
     if (hasWebView()) await stopLiveViewWithClear('filter_enter').catch(() => {})
     showFilterOptions.value = true
@@ -869,7 +882,7 @@ function handleNextClick() {
       message: 'next_btn_clicked',
       data: {
         showFilterOptions: showFilterOptions.value,
-        shootingDone: tp.shootingDone.value,
+        shootingDone: tp.shootingDone,
         branch: showFilterOptions.value ? 'onFilterConfirm' : 'onNext',
       },
       timestamp: Date.now(),
@@ -882,14 +895,14 @@ function handleNextClick() {
 }
 
 async function onAgain() {
-  if (tp.reshootUsedSlots.value.has(tp.currentMainIndex.value) || !tp.shootingDone.value) return
+  if (tp.reshootUsedSlots.has(tp.currentMainIndex) || !tp.shootingDone) return
   if (!hasWebView()) return
-  const idx = tp.currentMainIndex.value - 1
+  const idx = tp.currentMainIndex - 1
   const shotCountVal = shotCount.value
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/60461173-9774-483b-a750-822bb1590c42', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ScreenShoot.vue:onAgain:entry', message: 'onAgain entry', data: { idx, currentMainIndex: tp.currentMainIndex.value, thumbUrlsLen: thumbUrls.value.length, shotCount: shotCountVal, thumbHasUrlAtIdx: !!(thumbUrls.value[idx]) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'H1' }) }).catch(() => {})
+  fetch('http://127.0.0.1:7242/ingest/60461173-9774-483b-a750-822bb1590c42', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'ScreenShoot.vue:onAgain:entry', message: 'onAgain entry', data: { idx, currentMainIndex: tp.currentMainIndex, thumbUrlsLen: thumbUrls.value.length, shotCount: shotCountVal, thumbHasUrlAtIdx: !!(thumbUrls.value[idx]) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'H1' }) }).catch(() => {})
   // #endregion
-  shootLog(`onAgain 開始 idx=${idx} slot=${tp.currentMainIndex.value}`)
+  shootLog(`onAgain 開始 idx=${idx} slot=${tp.currentMainIndex}`)
   // #region agent log
   fetch('http://127.0.0.1:7242/ingest/60461173-9774-483b-a750-822bb1590c42', {
     method: 'POST',
@@ -899,8 +912,8 @@ async function onAgain() {
       message: 'debug_entry',
       data: {
         idx,
-        shootingDone: tp.shootingDone.value,
-        reshootSlotsSize: tp.reshootUsedSlots.value.size,
+        shootingDone: tp.shootingDone,
+        reshootSlotsSize: tp.reshootUsedSlots.size,
         hasHostUrl: !!hostLiveViewDataUrl.value,
         hostLen: hostLiveViewDataUrl.value?.length ?? 0,
         liveViewFrameCount: liveViewFrameCount.value,
@@ -979,8 +992,8 @@ async function onAgain() {
   } catch (e) {
     console.error('EDSDK reshoot failed', e)
   }
-  tp.reshootUsedSlots.value = new Set(
-    Array.from(tp.reshootUsedSlots.value).concat(tp.currentMainIndex.value)
+  tp.reshootUsedSlots = new Set(
+    Array.from(tp.reshootUsedSlots).concat(tp.currentMainIndex)
   )
   // #region agent log
   fetch('http://127.0.0.1:7242/ingest/60461173-9774-483b-a750-822bb1590c42', {
@@ -991,7 +1004,7 @@ async function onAgain() {
       message: 'debug_exit',
       data: {
         idx,
-        reshootSlotsSizeAfter: tp.reshootUsedSlots.value.size,
+        reshootSlotsSizeAfter: tp.reshootUsedSlots.size,
         hasHostUrlAfter: !!hostLiveViewDataUrl.value,
         hostLenAfter: hostLiveViewDataUrl.value?.length ?? 0,
         liveViewFrameCountAfter: liveViewFrameCount.value,
@@ -1006,8 +1019,8 @@ async function onAgain() {
 }
 
 function onThumbClick(num: number) {
-  if (!tp.shootingDone.value || isReshooting.value) return
-  tp.currentMainIndex.value = num
+  if (!tp.shootingDone || isReshooting.value) return
+  tp.currentMainIndex = num
 }
 
 /** 與原本 web-vue 一致：錯誤時可點重試（在 WebView 內會重新 start_liveview + 連拍） */
@@ -1080,9 +1093,9 @@ watch(
       shootLayoutReady.value = false
       hasInitialLeft.value = false
       thumbUrls.value = []
-      tp.shootingDone.value = false
-      tp.reshootUsedSlots.value = new Set()
-      tp.currentMainIndex.value = 1
+      tp.shootingDone = false
+      tp.reshootUsedSlots = new Set()
+      tp.currentMainIndex = 1
       showFilterOptions.value = false
       isReshooting.value = false
       cameraError.value = null
@@ -1106,9 +1119,9 @@ watch(
         const urls = Array.from({ length: count }, () => testImage)
         thumbUrls.value = urls
         setCaptureResults(urls)
-        tp.shootingDone.value = true
-        tp.reshootUsedSlots.value = new Set()
-        tp.currentMainIndex.value = 1
+        tp.shootingDone = true
+        tp.reshootUsedSlots = new Set()
+        tp.currentMainIndex = 1
         showFilterOptions.value = true
         try {
           await tp.setCoverAndVideoSize(0)
@@ -1160,11 +1173,19 @@ watch(
       const count = shotCount.value
       const onlyHalfPress = String(import.meta.env.VITE_SHOOT_ONLY_HALF_PRESS ?? '') === '1' || String(import.meta.env.VITE_SHOOT_ONLY_HALF_PRESS ?? '').toLowerCase() === 'true'
       const existing = captureResults.value
-      if (!onlyHalfPress && existing.length >= count) {
-        thumbUrls.value = existing.slice(0, count)
-        tp.shootingDone.value = true
-        tp.reshootUsedSlots.value = new Set()
-        tp.currentMainIndex.value = 1
+      const tplId = selectedTemplate.value?.id ?? null
+      const hasUsableCaptures =
+        tplId !== null &&
+        existing.length === count &&
+        existing.some((u) => typeof u === 'string' && u.trim().length > 0)
+      // 須張數相符、版型 id 對得上、且至少一張為有效網址；否則不要假裝「已拍完」，否則不會再走連拍也未設好狀態
+      const resumeFromCaptures =
+        !onlyHalfPress && hasUsableCaptures && captureResultsTemplateId.value === tplId
+      if (resumeFromCaptures) {
+        thumbUrls.value = [...existing]
+        tp.shootingDone = true
+        tp.reshootUsedSlots = new Set()
+        tp.currentMainIndex = 1
         showFilterOptions.value = false
         return
       }
@@ -1173,7 +1194,8 @@ watch(
         setTimeout(() => callHost('half_press_shutter', {}).catch(() => {}), 2000)
         await new Promise((r) => setTimeout(r, 1200))
         if (!props.isActive) return
-        setTimeout(() => startBurstShootEdsdk(), 0)
+        /** await：連拍走完前保持 entryFlowRunning，避免 deactivate 競態把 shootingDone／thumbUrls 清掉 */
+        await startBurstShootEdsdk()
         return
       }
 
@@ -1184,7 +1206,7 @@ watch(
       }
       await new Promise((r) => setTimeout(r, 1200))
       if (!props.isActive) return
-      startBurstShootEdsdk()
+      await startBurstShootEdsdk()
     } finally {
       entryFlowRunning.value = false
     }
@@ -1225,7 +1247,7 @@ watch(
               v-for="item in thumbList"
               :key="item.id"
               class="thumb-frame"
-              :class="{ 'is-selected': tp.shootingDone.value && tp.currentMainIndex.value === item.id }"
+              :class="{ 'is-selected': tp.shootingDone && tp.currentMainIndex === item.id }"
               role="button"
               tabindex="0"
               @click="onThumbClick(item.id)"
@@ -1236,9 +1258,9 @@ watch(
                 <img
                   :id="`shoot-page-${item.id}`"
                   class="shoot-page"
-                  :class="{ 'shoot-page--live-view-mirror': (tp.isBurstShooting.value && item.id - 1 === currentShootingIndex && hostLiveViewDataUrl) || (isReshooting && tp.currentMainIndex.value === item.id && hostLiveViewDataUrl) }"
+                  :class="{ 'shoot-page--live-view-mirror': (tp.isBurstShooting && item.id - 1 === currentShootingIndex && hostLiveViewDataUrl) || (isReshooting && tp.currentMainIndex === item.id && hostLiveViewDataUrl) }"
                   :alt="`縮圖 ${item.id}`"
-                  :src="(tp.isBurstShooting.value && item.id - 1 === currentShootingIndex && hostLiveViewDataUrl) || (isReshooting && tp.currentMainIndex.value === item.id && hostLiveViewDataUrl) ? hostLiveViewDataUrl : (item.url || item.frameUrl)"
+                  :src="(tp.isBurstShooting && item.id - 1 === currentShootingIndex && hostLiveViewDataUrl) || (isReshooting && tp.currentMainIndex === item.id && hostLiveViewDataUrl) ? hostLiveViewDataUrl : (item.url || item.frameUrl)"
                 />
                 <div
                   class="thumb-frame__cover"
@@ -1249,7 +1271,7 @@ watch(
             </div>
           </div>
           <p
-            v-show="!showFilterOptions && tp.shootingDone.value"
+            v-show="!showFilterOptions && tp.shootingDone"
             class="thumb-reshoot-hint"
           >
             每張照片皆可重拍一次
@@ -1280,7 +1302,7 @@ watch(
           <div
             ref="pictureAreaRef"
             class="picture-area"
-            :class="{ 'is-preview': tp.shootingDone.value && !isReshooting }"
+            :class="{ 'is-preview': tp.shootingDone && !isReshooting }"
             :style="pictureAreaStyle"
           >
           <!-- 相機錯誤時顯示（非 WebView 或 EDSDK 失敗），與原本 web-vue 排版一致 -->
@@ -1301,7 +1323,7 @@ watch(
           <div class="cover" :style="coverStyle" aria-hidden="true" />
           <!-- 預覽與拍照皆由 C# 推送：EDSDK Live View 即時預覽、拍完顯示選中照片；重拍時也要顯示 Live View -->
           <img
-            v-show="hostLiveViewDataUrl && (!tp.shootingDone.value || isReshooting)"
+            v-show="hostLiveViewDataUrl && (!tp.shootingDone || isReshooting)"
             class="host-live-view-img"
             :src="hostLiveViewDataUrl"
             alt="即時預覽"
@@ -1310,14 +1332,14 @@ watch(
           <img v-if="shootTexUrl" :src="shootTexUrl" class="shoot-shot-tex" alt="" aria-hidden="true" />
           <!-- 倒數層放在 Live View 之上，確保數字可見 -->
           <div
-            v-show="tp.countdownVisible.value && countdownDisplay"
+            v-show="tp.countdownVisible && countdownDisplay"
             class="shoot-countdown"
             aria-hidden="true"
           >
             {{ countdownDisplay }}
           </div>
           <div
-            v-show="hasWebView() && !hostLiveViewDataUrl && (!tp.shootingDone.value || isReshooting)"
+            v-show="hasWebView() && !hostLiveViewDataUrl && (!tp.shootingDone || isReshooting)"
             class="shoot-waiting"
             aria-hidden="true"
           >
@@ -1325,7 +1347,7 @@ watch(
           </div>
           <!-- 只半按模式：有畫面後可手動觸發倒數＋拍照 -->
           <button
-            v-show="onlyHalfPressMode && hostLiveViewDataUrl && !tp.shootingDone.value && !tp.isBurstShooting.value"
+            v-show="onlyHalfPressMode && hostLiveViewDataUrl && !tp.shootingDone && !tp.isBurstShooting"
             type="button"
             class="shoot-start-countdown-btn"
             @click="startBurstShootEdsdk"
@@ -1334,7 +1356,7 @@ watch(
           </button>
             <!-- 濾鏡區：用 canvas 顯示主預覽並套用 selectedFilter -->
             <canvas
-              v-show="showFilterOptions && tp.shootingDone.value && !isReshooting"
+              v-show="showFilterOptions && tp.shootingDone && !isReshooting"
               ref="filterPreviewCanvasRef"
               class="shoot-main-preview shoot-main-preview--canvas"
               aria-label="預覽（濾鏡）"
@@ -1342,14 +1364,14 @@ watch(
             <!-- 非濾鏡區：用 img 顯示主預覽 -->
             <img
               ref="mainPreviewImgRef"
-              v-show="!showFilterOptions && tp.shootingDone.value && !isReshooting"
+              v-show="!showFilterOptions && tp.shootingDone && !isReshooting"
               class="shoot-main-preview"
               :src="mainPreviewUrl"
               alt="預覽"
             />
             <!-- 使用者貼圖圖層：可拖曳與滾輪縮放（依 VITE_STICKER_ENABLED 開關） -->
             <div
-              v-show="showFilterOptions && tp.shootingDone.value && !isReshooting && isStickerEnabled()"
+              v-show="showFilterOptions && tp.shootingDone && !isReshooting && isStickerEnabled()"
               class="stickers-layer"
             >
               <div
@@ -1392,23 +1414,20 @@ watch(
         </div>
         </div>
         <div
+          v-show="tp.shootingDone && !isReshooting"
           class="btns shoot-btns"
-          :class="{
-            'is-visible': tp.shootingDone.value && !isReshooting,
-            'is-reshooting': isReshooting,
-          }"
         >
           <button
             type="button"
             class="again-btn shoot-btn"
-            :class="{ 'is-hidden': tp.reshootUsedSlots.value.has(tp.currentMainIndex.value) || showFilterOptions }"
+            :class="{ 'is-hidden': tp.reshootUsedSlots.has(tp.currentMainIndex) || showFilterOptions }"
             @click="onAgain"
           />
           <div class="shoot-next-wrap">
             <button type="button" class="next-btn shoot-btn" @click="handleNextClick" />
             <!-- 濾鏡／貼圖頁 1 分鐘倒數（在下一步右側，不佔 flex 寬度以免擠動按鈕） -->
             <div
-              v-show="showFilterOptions && tp.shootingDone.value && !isReshooting"
+              v-show="showFilterOptions && tp.shootingDone && !isReshooting"
               class="filter-countdown"
               aria-label="剩餘時間"
             >
@@ -1432,6 +1451,12 @@ watch(
   // background-color: #ff4d4f;
   width: 100%;
   height: 100vh;
+  min-height: 0;
+  flex-direction: column;
+  align-items: stretch;
+  /* App.vue 底欄 Footer 為 fixed、z-index:100；拍照頁 .screen 僅 z-index:10，否則底部按鈕會被底欄蓋住（單張大預覽時特別明顯） */
+  padding-bottom: 44px;
+  box-sizing: border-box;
   background-image: url('#{$path-templates}/ShootPage/background.png');
 
   &.is-reshooting {
@@ -1499,7 +1524,12 @@ watch(
   .screen-shoot-content {
     display: flex;
     width: 100%;
-    height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    /* 預覽區改以 zoom 縮放（見 .picture-area），版面高度會跟著縮小，一屏可見按鈕；仍保留 auto 以防極窄螢幕 */
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     justify-content: center;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -1710,7 +1740,7 @@ watch(
     align-items: flex-start;
     gap: 24px;
     width: 100%;
-    overflow: visible; /* 預覽區 scale(1.5) 外溢仍可顯示 */
+    overflow: visible; /* 預覽區 zoom 後外溢仍可顯示 */
     /* 與上方 Readtext／choosetext 同軸：預覽框在橫向置中（列寬常大於 picture-area 時避免靠左） */
     justify-content: center;
   }
@@ -1744,10 +1774,13 @@ watch(
     position: relative;
     display: flex;
     align-items: center;
-    overflow: visible; /* scale 後外溢；原 hidden 會裁切 1.5 倍預覽 */
+    overflow: visible;
     flex-shrink: 0;
-    transform: scale(var(--shoot-preview-scale, 0.5));
-    transform-origin: center top;
+    /*
+     * transform: scale() 不減少版面高度，單張大框會把按鈕推出視窗、必須捲動。
+     * zoom 會一併縮小排版佔位（Chromium / WebView2），與 --shoot-preview-scale 一致；勿與 transform scale 併用。
+     */
+    zoom: var(--shoot-preview-scale, 0.5);
 
     .shoot-camera-error {
       position: absolute;
@@ -1973,18 +2006,11 @@ watch(
   }
 
   .btns.shoot-btns {
-    visibility: hidden;
+    position: relative;
+    z-index: 120;
+    flex-shrink: 0;
     /* 整排（重拍＋下一步）略往右，與中央預覽較對齊 */
     margin-left: 48px;
-
-    &.is-visible {
-      visibility: visible;
-    }
-
-    &.is-reshooting {
-      visibility: hidden !important;
-      pointer-events: none;
-    }
 
     /* 重拍隱藏時只用 visibility 保留佔位；禁止 display:none，避免下一步按鈕位移（勿用行內 style） */
     .again-btn.is-hidden {

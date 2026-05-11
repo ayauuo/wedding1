@@ -111,6 +111,8 @@ const currentScreen = ref<ScreenName>('idle')
 const selectedTemplate = shallowRef<Template | null>(null)
 const loading = ref(false)
 const captureResults = ref<string[]>([])
+/** 最近一次寫入 captureResults 時的版型 id（與張數一併用於判斷是否可恢復預覽、略過連拍） */
+const captureResultsTemplateId = ref<string | null>(null)
 const finalFilePath = ref<string | null>(null)
 const finalPreviewUrl = ref<string>('')
 const qrImageUrl = ref<string>('')
@@ -178,6 +180,7 @@ async function setCaptureResultsFromTestImages() {
     const res = await callHost('load_test_captures', { templateId: tplId }) as { urls?: string[] }
     if (Array.isArray(res.urls) && res.urls.length > 0) {
       captureResults.value = res.urls
+      captureResultsTemplateId.value = tplId
       return
     }
   } catch {
@@ -186,6 +189,7 @@ async function setCaptureResultsFromTestImages() {
   const tpl = selectedTemplate.value
   const n = tpl?.shotCount ?? 4
   captureResults.value = Array.from({ length: n }, (_, i) => `${TEST_IMAGE_BASE}/test${i}.jpg`)
+  captureResultsTemplateId.value = tpl?.id ?? null
 }
 
 export function usePhotobooth() {
@@ -255,6 +259,7 @@ export function usePhotobooth() {
 
   function setCaptureResults(urls: string[]) {
     captureResults.value = urls
+    captureResultsTemplateId.value = selectedTemplate.value?.id ?? null
   }
 
   function setCaptureVideoBlob(blob: Blob | null) {
@@ -304,6 +309,7 @@ export function usePhotobooth() {
 
   function resetSession() {
     captureResults.value = []
+    captureResultsTemplateId.value = null
     finalFilePath.value = null
     finalPreviewUrl.value = ''
     finalVideoUrl.value = ''
@@ -413,6 +419,7 @@ export function usePhotobooth() {
         const res = await callHost('load_captures', {}) as { urls?: string[] }
         if (Array.isArray(res.urls) && res.urls.length > 0) {
           captureResults.value = res.urls
+          captureResultsTemplateId.value = tpl.id
         }
       } catch {
         // ignore
@@ -661,6 +668,7 @@ export function usePhotobooth() {
     selectedFilter,
     loading,
     captureResults,
+    captureResultsTemplateId,
     finalFilePath,
     finalPreviewUrl,
     resultDisplayUrl,
