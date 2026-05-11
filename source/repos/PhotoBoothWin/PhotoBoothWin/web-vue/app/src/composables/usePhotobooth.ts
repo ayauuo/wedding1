@@ -71,12 +71,12 @@ const TEMPLATES: Template[] = [
     height: 1795, /* 最後合成圖高度 */
     slots: [
       { x: 88, y: 137, w: 460, h: 340 },
-      { x: 88, y: 505, w: 460, h: 340 },
-      { x: 88, y: 837, w: 460, h: 340 },
+      { x: 88, y: 507, w: 460, h: 340 },
+      { x: 88, y: 877, w: 460, h: 340 },
       { x: 88, y: 1249, w: 460, h: 340 },
       { x: 666, y: 137, w: 460, h: 340 },
-      { x: 666, y: 505, w: 460, h: 340 },
-      { x: 666, y: 837, w: 460, h: 340 },
+      { x: 666, y: 507, w: 460, h: 340 },
+      { x: 666, y: 877, w: 460, h: 340 },
       { x: 666, y: 1249, w: 460, h: 340 },
     ],
     shootLayout: { layoutKey: 'bk03', captureW: 460, captureH: 340, previewScale: 1.8 },
@@ -94,12 +94,12 @@ const TEMPLATES: Template[] = [
     height: 1795, /* 最後合成圖高度 */
     slots: [
       { x: 88, y: 137, w: 460, h: 340 },
-      { x: 88, y: 505, w: 460, h: 340 },
-      { x: 88, y: 837, w: 460, h: 340 },
+      { x: 88, y: 507, w: 460, h: 340 },
+      { x: 88, y: 877, w: 460, h: 340 },
       { x: 88, y: 1249, w: 460, h: 340 },
       { x: 666, y: 137, w: 460, h: 340 },
-      { x: 666, y: 505, w: 460, h: 340 },
-      { x: 666, y: 837, w: 460, h: 340 },
+      { x: 666, y: 507, w: 460, h: 340 },
+      { x: 666, y: 877, w: 460, h: 340 },
       { x: 666, y: 1249, w: 460, h: 340 },
     ],
     shootLayout: { layoutKey: 'bk04', captureW: 460, captureH: 340, previewScale: 1.8 },
@@ -164,11 +164,10 @@ const qrDisplayText = computed(() => {
   return ''
 })
 
-/** 是否顯示 QR code（VITE_QRCODE_ENABLED=0 或 false 時隱藏，預設 1） */
+/** 是否顯示／產生 QR code（預設關閉；設 VITE_QRCODE_ENABLED=1 或 true 才啟用） */
 const showQrCode = computed(() => {
   const v = import.meta.env.VITE_QRCODE_ENABLED
-  if (v === '0' || String(v).toLowerCase() === 'false') return false
-  return true
+  return v === '1' || String(v).toLowerCase() === 'true'
 })
 
 const TEST_IMAGE_BASE = '/assets/templates/test'

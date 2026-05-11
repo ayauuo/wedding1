@@ -17,7 +17,7 @@ interface ImportMetaEnv {
   readonly VITE_DOWNLOAD_PAGE_BASE_URL?: string
   /** 離線模式：1/true 時不上傳、不產生 QR code（需在 buildFinalOutput 內實作） */
   readonly VITE_OFFLINE_MODE?: string
-  /** 結果頁是否顯示 QR code：1/true 時顯示；0/false 時隱藏，預設 1 */
+  /** 結果頁是否顯示／產生 QR code：1/true 時啟用；未設或 0/false 時為無 QR 結果頁（預設關閉） */
   readonly VITE_QRCODE_ENABLED?: string
   /** 合成用座標：每格「寬,高,x,y」逗號串接，與版型張數一致。例：VITE_BK01_SYNTHESIS=544,471,43,244,... */
   readonly VITE_BK01_SYNTHESIS?: string
